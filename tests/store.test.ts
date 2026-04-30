@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto'
 import { describe, it, expect, beforeEach } from 'vitest'
-import { createStore, _resetForTests } from '../src/store'
-import type { Store } from '../src/store'
+import { createStore, _resetForTests } from '../../packages/runtime/src/store'
+import type { Store } from '../../packages/runtime/src/store'
 
 let store: Store
 

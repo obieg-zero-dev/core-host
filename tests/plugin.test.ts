@@ -3,9 +3,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
   useHostStore, log, clearLog, getAllPlugins, registerView, registerParser, registerAction,
   getViews, getParsers, getActions, unregisterPlugin, _resetRegistries, loadOne,
-} from '../src/plugin'
-import { createStore, _resetForTests } from '../src/store'
-import type { Store } from '../src/store'
+} from '../../packages/runtime/src/plugin'
+import { createStore, _resetForTests } from '../../packages/runtime/src/store'
+import type { Store } from '../../packages/runtime/src/store'
 
 beforeEach(() => {
   useHostStore.setState({ plugins: [], logs: [], activeId: null, leftOpen: false, progress: false }, true)

@@ -1,6 +1,8 @@
 @import "tailwindcss";
-@source "../node_modules/@obieg-zero/sdk/src/ui.tsx";
+@source "../../packages/sdk/src/ui.tsx";
+@source "../../packages/runtime/src/**/*.{ts,tsx}";
 @plugin "daisyui";
+@plugin "@tailwindcss/typography";
 
 @utility text-2xs {
   font-size: 0.625rem;

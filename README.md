@@ -110,3 +110,31 @@ npm run build    # Builds all plugin-*/src/index.tsx → plugin-*/index.mjs
 ```
 npm run test
 ```
+
+
+
+ │  #  │           Feature           │                                                   Co robi (1 zdanie)                                                    │  LOC  │
+  ├─────┼─────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────┤   
+  │ 1   │ Connection challenges       │ Po przeczytaniu lektury reader pyta "gdzie jeszcze spotkasz hybris?" i pokazuje 3 lektury do wyboru.                    │ 130   │
+  ├─────┼─────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────┤
+  │ 2   │ Markdown bullets/headings   │ W slajdzie czytnika linie zaczynające się od - są listą, ## są nagłówkami.                                              │ 60    │   
+  ├─────┼─────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────┤   
+  │ 3   │ Whack-def                   │ Drugi tryb areny: pokazany termin, wybierasz definicję (zamiast: pokazana definicja, wybierasz termin).                 │ 30    │   
+  ├─────┼─────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────┤   
+  │ 4   │ Combo + 3 poziomy trudności │ W arenie za serię trafień rośnie mnożnik, można kliknąć "łatwiejsze" za mniej punktów.                                  │ 50    │
+  ├─────┼─────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────┤   
+  │ 5   │ Sonar + glow + kamera SVG   │ Mapa się płynnie scrolluje do klikniętego węzła, "co dalej" pulsuje falami, krawędzie świecą.                           │ 80    │
+  ├─────┼─────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────┤   
+  │ 6   │ NodeDetail 3 kroki          │ Po kliknięciu węzła okienko z "Krok 1: Przeczytaj / Krok 2: Odkryj terminy / Krok 3: Wygraj arenę" z ✓ przy zrobionych. │ 50    │
+  ├─────┼─────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────┤   
+  │ 7   │ Progress widget             │ Prawy panel z procentami: gęstość połączeń, ile odkryte/opanowane, ostatnie aktywności, sugestia "co dalej".            │ 70    │
+  ├─────┼─────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────┤   
+  │ 8   │ bqFlash złota linia         │ Po dobrej odpowiedzi w reader connection challenge, na mapie zapala się złota linia między dwoma lekturami.             │ 40    │
+  ├─────┼─────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────┤   
+  │ 9   │ Mastery ring (gwiazdka)     │ Po 5 trafieniach na węźle pojawia się gwiazdka i pierścień zamiast liczby.                                              │ 50    │
+  ├─────┼─────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────┤   
+  │ 10  │ RepoPicker z org GitHub     │ Lista wszystkich repo z org BrainEduPlay z topikiem brainquest, klikasz wybierasz przedmiot.                            │ 30    │
+  ├─────┼─────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────┤   
+  │ 11  │ CheatSheet shared           │ Lewy panel pokazuje terminy odkryte w bieżącym kontekście, klik "czytaj" wraca do readera.                              │ 30+30 │
+  ├─────┼─────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────┤   
+  │ 12  │ Multi-repo lexicon          │ Funkcja dociągania leksykonu z innego repo do tego samego drzewa.                                                       │ 15    │
