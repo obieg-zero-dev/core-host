@@ -12,6 +12,6 @@
     "pluginUri": "./plugin-data"
   },
   {
-    "pluginUri": "obieg-zero-dev/plugin-brain-quest-studio@dev"
+    "pluginUri": "./plugin-cosmos-bq"
   }
 ]

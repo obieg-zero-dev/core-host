@@ -11,8 +11,10 @@ Platforma pluginowa w przeglądarce. Zustand + IndexedDB + OPFS, zero backendu.
 ## Zasady
 
 - Polskie znaki diakrytyczne w UI
-- **NIGDY** ręcznie `git add/commit/push` ani `npm publish` — TYLKO MCP `obieg-deploy`
-- Repozytoria GitHub przez `gh` CLI
+- **PLUGINY ROZWIJAMY WYŁĄCZNIE LOKALNIE.** AI ma BEZWZGLĘDNY ZAKAZ wywoływania jakichkolwiek MCP wypychających na zewnątrz: `plugin_deploy_dev`, `plugin_deploy_prod`, `app_deploy_dev`, `app_deploy_prod`, `push_core_host`, `package_publish`. Te narzędzia wywołuje TYLKO właściciel ręcznie. Powód: te MCP po cichu modyfikują `public/config.json` i psują lokalny dev workflow (PROD trafia na localhost:5173 zamiast lokalnego buildu). AI może co najwyżej ZAPROPONOWAĆ deploy słowem — nigdy go nie wykonuje.
+- AI wolno wywoływać tylko READ/BUILD MCP: `plugin_build`, `plugin_status`, `app_status`, `check_sync`, `package_status`, `plugin_config_local` (przywracanie lokalności).
+- **NIGDY** ręcznie `git add/commit/push` ani `npm publish` — TYLKO MCP `obieg-deploy` (dotyczy tylko właściciela; AI w ogóle nie commituje).
+- Repozytoria GitHub przez `gh` CLI (read-only dla AI: `gh api`, `gh repo view`, `gh pr view`).
 - Nie uruchamiaj dev servera bez pytania
 - Config prod jest hardcoded w `app_deploy_prod` — nigdy nie sugeruj zmiany
 - Nie duplikuj logiki między pluginami — deleguj przez `sdk.shared` i `activeId`
@@ -31,7 +33,9 @@ obirg-zero/
 
 GitHub org: **obieg-zero**. Branchy: `dev` = staging, `main` = prod + tagi semver.
 
-Cykl pluginu: `plugin_config_local` → edycja → `plugin_build` → user OK → `plugin_deploy_dev` → user OK → `plugin_deploy_prod`
+Cykl pluginu (kroki AI vs właściciela):
+- AI: `plugin_config_local` → edycja src → `plugin_build` → STOP, raport do właściciela
+- WŁAŚCICIEL ręcznie (AI nie tyka): `plugin_deploy_dev` → walidacja → `plugin_deploy_prod`
 
 ## Store API — synchroniczny CRUD
 
