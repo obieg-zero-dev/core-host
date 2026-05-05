@@ -97,9 +97,9 @@ npm run build    # Builds all plugin-*/src/index.tsx → plugin-*/index.mjs
 
 ```json
 [
-  { "pluginUri": "obieg-zero/plugin-darkmode@main", "defaultOptions": { "theme": "dracula" } },
-  { "pluginUri": "obieg-zero/plugin-workflow-crm@main", "importData": ["workflows.json", "opponents.json"] },
-  { "pluginUri": "obieg-zero/plugin-data@main" }
+  { "pluginUri": "obieg-zero-dev/plugin-darkmode@main", "defaultOptions": { "theme": "dracula" } },
+  { "pluginUri": "obieg-zero-dev/plugin-workflow-crm@main", "importData": ["workflows.json", "opponents.json"] },
+  { "pluginUri": "obieg-zero-dev/plugin-data@main" }
 ]
 ```
 
