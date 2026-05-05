@@ -11,8 +11,8 @@ Platforma pluginowa w przeglądarce. Zustand + IndexedDB + OPFS, zero backendu.
 ## Zasady
 
 - Polskie znaki diakrytyczne w UI
-- **PLUGINY ROZWIJAMY WYŁĄCZNIE LOKALNIE.** AI ma BEZWZGLĘDNY ZAKAZ wywoływania jakichkolwiek MCP wypychających na zewnątrz: `plugin_deploy_dev`, `plugin_deploy_prod`, `app_deploy_dev`, `app_deploy_prod`, `push_core_host`, `package_publish`. Te narzędzia wywołuje TYLKO właściciel ręcznie. Powód: te MCP po cichu modyfikują `public/config.json` i psują lokalny dev workflow (PROD trafia na localhost:5173 zamiast lokalnego buildu). AI może co najwyżej ZAPROPONOWAĆ deploy słowem — nigdy go nie wykonuje.
-- AI wolno wywoływać tylko READ/BUILD/LOCAL-COMMIT MCP: `plugin_build`, `plugin_status`, `app_status`, `check_sync`, `package_status`, `plugin_config_local` (przywracanie lokalności), `plugin_commit_local`, `core_host_commit_local` (commit LOKALNY bez push — bezpieczne).
+- **PLUGINY ROZWIJAMY WYŁĄCZNIE LOKALNIE.** AI ma BEZWZGLĘDNY ZAKAZ wywoływania jakichkolwiek MCP wypychających na zewnątrz: `plugin_deploy_dev`, `plugin_deploy_prod`, `app_deploy_dev`, `app_deploy_prod`, `push_core_host`, `package_publish`, `bq_pack_publish`. Te narzędzia wywołuje TYLKO właściciel ręcznie. Powód: te MCP po cichu modyfikują `public/config.json` i psują lokalny dev workflow (PROD trafia na localhost:5173 zamiast lokalnego buildu). AI może co najwyżej ZAPROPONOWAĆ deploy słowem — nigdy go nie wykonuje.
+- AI wolno wywoływać tylko READ/BUILD/LOCAL-COMMIT MCP: `plugin_build`, `plugin_status`, `app_status`, `check_sync`, `package_status`, `plugin_config_local` (przywracanie lokalności), `plugin_commit_local`, `core_host_commit_local`, `packages_commit_local` (commit LOKALNY bez push — bezpieczne), `bq_pack_status` (read-only).
 - **NIGDY** ręcznie `git add/commit/push` ani `npm publish` — TYLKO MCP `obieg-deploy` (dotyczy tylko właściciela; AI w ogóle nie commituje).
 - Repozytoria GitHub przez `gh` CLI (read-only dla AI: `gh api`, `gh repo view`, `gh pr view`).
 - Nie uruchamiaj dev servera bez pytania
