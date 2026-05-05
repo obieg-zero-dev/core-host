@@ -19,12 +19,11 @@ LLM nie pcha                 LLM nie tyka                        LLM nie tyka
 - Buduje lokalnie (`plugin_build` MCP albo `npm run build`).
 - Commituje LOKALNIE przez `*_commit_local` MCP (`plugin_commit_local`, `core_host_commit_local`, `packages_commit_local`).
 - **NIGDY nie pcha do `obieg-zero-dev`** — ani przez bash `git push`, ani przez MCP deploy.
-- **Nigdy nie wywołuje:** `plugin_deploy_dev`, `plugin_deploy_prod`, `app_deploy_dev`, `app_deploy_prod`, `push_core_host`, `package_publish`, `bq_pack_publish`.
+- Te narzędzia są usunięte z MCP whitelisty (od v0.2.0): `plugin_deploy_*`, `app_deploy_*`, `push_core_host`, `package_publish`, `bq_pack_publish`, `plugin_config_*`. Przed v0.2.0 LLM mógł je wywołać i robił bałagan (pchał bundle bez source, nadpisywał `public/config.json`).
 
-**Użytkownik (właściciel):**
-- Pcha `LOCAL → DEV`: `git push origin dev` (gdy daje sygnał "kod ma iść na dev").
-- Pcha `DEV → PROD`: po sygnale "na dev jest dobrze" → `git merge --ff dev && git push origin main` (lub `gh pr create dev → main`).
-- Tagi semver na main (`vX.Y.Z`) tworzy ręcznie przy promocji prod.
+**Użytkownik (właściciel):** pcha przez skrypty z `CORE-HOST/scripts/` (hook gita wymaga skryptów .sh):
+- `bash scripts/promote-to-dev.sh <plugin-X|core-host|packages>` — LOCAL → DEV (force-push lokalnego HEAD na zdalny branch dev).
+- `bash scripts/promote-to-prod.sh <target> [vX.Y.Z]` — DEV → PROD (ff dev → main + opcjonalny tag semver).
 
 **Reguła kontekstu:** `obieg-zero-dev` to JEDYNE źródło kodu projektu. Każde repo ma source + bundle + meta razem na każdej gałęzi. Nie istnieją osobne "release-only" repozytoria. Jeśli czegoś nie ma na `obieg-zero-dev`, to nie istnieje.
 
@@ -53,15 +52,20 @@ obirg-zero/
 └── packages/               ← @obieg-zero/* (sdk, mcp-deploy, workflow-engine, doc-*, text-pl)
 ```
 
-## MCP `obieg-deploy`
+## MCP `obieg-deploy` (v0.2.0)
 
 GitHub org: **obieg-zero-dev** (jedyne źródło). Branchy w każdym repo: `dev` = staging, `main` = prod + tagi semver.
 
+Wystawione narzędzia (read + lokalny commit, zero pchania):
+- `check_sync`, `plugin_status`, `package_status`, `app_status` — audyty.
+- `plugin_build` — buduje wszystkie pluginy (`plugins/plugin-*/index.mjs`).
+- `plugin_commit_local`, `core_host_commit_local`, `packages_commit_local` — commit lokalny w odpowiednim repo, bez push.
+- `bq_pack_status` — status paczki kontentu BQ.
+- `setup_creem` — sync z Creem (płatności).
+
 Cykl pluginu:
 - **LLM:** edycja `src/` → `plugin_build` → `plugin_commit_local` → STOP, raport.
-- **Właściciel ręcznie:** `git push origin dev` (sygnał: kod na dev) → walidacja → `git push origin main` + `git tag vX.Y.Z && git push --tags` (sygnał: dev OK, prod).
-
-> Stare narzędzia `plugin_deploy_*`, `app_deploy_*`, `package_publish`, `push_core_host` są zachowane w MCP, ale **wyłącznie do ręcznego użytku właściciela**. LLM ich nie wywołuje pod żadnym pozorem (psuły model: pchały built bundle bez source, robiły nieoczekiwane bumpe wersji, nadpisywały `public/config.json`).
+- **Właściciel:** `bash scripts/promote-to-dev.sh plugin-X` → walidacja → `bash scripts/promote-to-prod.sh plugin-X vX.Y.Z`.
 
 ## Store API — synchroniczny CRUD
 
