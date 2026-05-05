@@ -21,9 +21,16 @@ LLM nie pcha                 LLM nie tyka                        LLM nie tyka
 - **NIGDY nie pcha do `obieg-zero-dev`** — ani przez bash `git push`, ani przez MCP deploy.
 - Te narzędzia są usunięte z MCP whitelisty (od v0.2.0): `plugin_deploy_*`, `app_deploy_*`, `push_core_host`, `package_publish`, `bq_pack_publish`, `plugin_config_*`. Przed v0.2.0 LLM mógł je wywołać i robił bałagan (pchał bundle bez source, nadpisywał `public/config.json`).
 
-**Użytkownik (właściciel):** pcha przez skrypty z `CORE-HOST/scripts/` (hook gita wymaga skryptów .sh):
-- `bash scripts/promote-to-dev.sh <plugin-X|core-host|packages>` — LOCAL → DEV (force-push lokalnego HEAD na zdalny branch dev).
-- `bash scripts/promote-to-prod.sh <target> [vX.Y.Z]` — DEV → PROD (ff dev → main + opcjonalny tag semver).
+**Użytkownik (właściciel):** pcha przez skrypty z `CORE-HOST/scripts/`:
+- `bash scripts/promote-to-dev.sh <plugin-X|core-host|packages>` — LOCAL → DEV. Waliduje: working tree clean, build świeży (`index.mjs` nie starszy od `src/index.tsx`).
+- `bash scripts/promote-to-prod.sh <target> [vX.Y.Z]` — DEV → PROD. Waliduje: tag semver, istnienie `origin/dev`.
+
+**Niezawodność (3 warstwy):**
+1. **`.git/hooks/pre-push`** w każdym lokalnym repo — blokuje direct `git push` (zarówno bash, jak i każdy klient git). Bypass tylko przez `OBIEG_PROMOTE=1` (eksportowane przez skrypty `promote-*`).
+2. **Hook `block-direct-git.sh`** w Claude Code — blokuje bash `git push/add/commit` w sesji AI, dopóki komenda nie zawiera `.sh` (czyli idzie przez skrypt).
+3. **Brak narzędzi push w MCP `obieg-deploy v0.2.0`** — LLM nawet jeśli chciałby, nie ma jak.
+
+**Setup w nowym klonie:** `bash core-host/scripts/install-guards.sh` (instaluje pre-push hook w lokalnych repo).
 
 **Reguła kontekstu:** `obieg-zero-dev` to JEDYNE źródło kodu projektu. Każde repo ma source + bundle + meta razem na każdej gałęzi. Nie istnieją osobne "release-only" repozytoria. Jeśli czegoś nie ma na `obieg-zero-dev`, to nie istnieje.
 

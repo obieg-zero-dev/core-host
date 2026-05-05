@@ -1,0 +1,18 @@
+#!/bin/bash
+# Guard: blokuje direct `git push`. Autoryzowane są tylko skrypty CORE-HOST/scripts/promote-*.sh,
+# ktore eksportuja OBIEG_PROMOTE=1 przed push.
+#
+# Bypass dla wyjatkowych sytuacji (CI/manual rollback): OBIEG_PROMOTE=1 git push origin main
+# Albo: git push --no-verify (ostrzezenie: omija ten guard).
+
+if [ "${OBIEG_PROMOTE:-0}" != "1" ]; then
+  echo "" >&2
+  echo "BLOCKED: bezposredni 'git push' jest zablokowany." >&2
+  echo "Uzyj skryptow promocji:" >&2
+  echo "  bash <CORE-HOST>/scripts/promote-to-dev.sh  <target>            # LOCAL -> DEV" >&2
+  echo "  bash <CORE-HOST>/scripts/promote-to-prod.sh <target> [vX.Y.Z]   # DEV   -> PROD" >&2
+  echo "" >&2
+  echo "Awaryjnie: 'OBIEG_PROMOTE=1 git push ...' (swiadoma decyzja, omija mechanizm promocji)." >&2
+  exit 1
+fi
+exit 0
