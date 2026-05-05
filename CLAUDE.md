@@ -2,23 +2,47 @@
 
 Platforma pluginowa w przeglądarce. Zustand + IndexedDB + OPFS, zero backendu.
 
+## Model promocji (FUNDAMENT — przeczytaj zanim cokolwiek zrobisz)
+
+Standardowy git flow z trzema warstwami: **local → dev → prod**.
+
+```
+LOCAL (Twój dysk)              DEV (obieg-zero-dev/X:dev)        PROD (obieg-zero-dev/X:main)
+   ↓                                ↓                                  ↓
+LLM edytuje source           kopia z LOCAL gdy user da sygnał    kopia z DEV gdy user da sygnał
+LLM commituje LOKALNIE       (user pcha: git push origin dev)    (user pcha: git push origin main)
+LLM nie pcha                 LLM nie tyka                        LLM nie tyka
+```
+
+**LLM (Ty):**
+- Edytuje source code w `plugins/plugin-X/src/`, `packages/*/src/`, `CORE-HOST/src/`.
+- Buduje lokalnie (`plugin_build` MCP albo `npm run build`).
+- Commituje LOKALNIE przez `*_commit_local` MCP (`plugin_commit_local`, `core_host_commit_local`, `packages_commit_local`).
+- **NIGDY nie pcha do `obieg-zero-dev`** — ani przez bash `git push`, ani przez MCP deploy.
+- **Nigdy nie wywołuje:** `plugin_deploy_dev`, `plugin_deploy_prod`, `app_deploy_dev`, `app_deploy_prod`, `push_core_host`, `package_publish`, `bq_pack_publish`.
+
+**Użytkownik (właściciel):**
+- Pcha `LOCAL → DEV`: `git push origin dev` (gdy daje sygnał "kod ma iść na dev").
+- Pcha `DEV → PROD`: po sygnale "na dev jest dobrze" → `git merge --ff dev && git push origin main` (lub `gh pr create dev → main`).
+- Tagi semver na main (`vX.Y.Z`) tworzy ręcznie przy promocji prod.
+
+**Reguła kontekstu:** `obieg-zero-dev` to JEDYNE źródło kodu projektu. Każde repo ma source + bundle + meta razem na każdej gałęzi. Nie istnieją osobne "release-only" repozytoria. Jeśli czegoś nie ma na `obieg-zero-dev`, to nie istnieje.
+
 ## Zanim cokolwiek zrobisz
 
-1. Wywołaj `ToolSearch` na `mcp__obieg-deploy` — przeczytaj WSZYSTKIE narzędzia i ich parametry. Nie zgaduj.
-2. `check_sync` — pełny obraz stanu pluginów, paczek, aplikacji.
-3. Przeczytaj MEMORY.md — kontekst z poprzednich rozmów.
+1. `check_sync` — stan pluginów, paczek, aplikacji.
+2. Przeczytaj MEMORY.md — kontekst z poprzednich rozmów.
+3. Plan zmian → edycja → build → `*_commit_local` → STOP. User decyduje co dalej.
 
 ## Zasady
 
-- Polskie znaki diakrytyczne w UI
-- **PLUGINY ROZWIJAMY WYŁĄCZNIE LOKALNIE.** AI ma BEZWZGLĘDNY ZAKAZ wywoływania jakichkolwiek MCP wypychających na zewnątrz: `plugin_deploy_dev`, `plugin_deploy_prod`, `app_deploy_dev`, `app_deploy_prod`, `push_core_host`, `package_publish`, `bq_pack_publish`. Te narzędzia wywołuje TYLKO właściciel ręcznie. Powód: te MCP po cichu modyfikują `public/config.json` i psują lokalny dev workflow (PROD trafia na localhost:5173 zamiast lokalnego buildu). AI może co najwyżej ZAPROPONOWAĆ deploy słowem — nigdy go nie wykonuje.
-- AI wolno wywoływać tylko READ/BUILD/LOCAL-COMMIT MCP: `plugin_build`, `plugin_status`, `app_status`, `check_sync`, `package_status`, `plugin_config_local` (przywracanie lokalności), `plugin_commit_local`, `core_host_commit_local`, `packages_commit_local` (commit LOKALNY bez push — bezpieczne), `bq_pack_status` (read-only).
-- **NIGDY** ręcznie `git add/commit/push` ani `npm publish` — TYLKO MCP `obieg-deploy` (dotyczy tylko właściciela; AI w ogóle nie commituje).
-- Repozytoria GitHub przez `gh` CLI (read-only dla AI: `gh api`, `gh repo view`, `gh pr view`).
-- Nie uruchamiaj dev servera bez pytania
-- Config prod jest hardcoded w `app_deploy_prod` — nigdy nie sugeruj zmiany
-- Nie duplikuj logiki między pluginami — deleguj przez `sdk.shared` i `activeId`
-- Sprawdź `store.registerType()` dla WSZYSTKICH typów z seed data
+- Polskie znaki diakrytyczne w UI.
+- **LLM ma BEZWZGLĘDNY ZAKAZ pchania kodu** na `obieg-zero-dev` (ani bash `git push`, ani MCP `*_deploy_*`/`*_publish`/`push_core_host`). Każda taka operacja jest wykonywana wyłącznie ręcznie przez właściciela.
+- LLM wolno (whitelist): `plugin_build`, `plugin_status`, `app_status`, `check_sync`, `package_status`, `plugin_commit_local`, `core_host_commit_local`, `packages_commit_local`, `bq_pack_status`. Plus `gh` CLI tylko read-only (`gh api`, `gh repo view`, `gh pr view`).
+- Build pluginów po każdej edycji: `plugin_build` (regeneruje `index.mjs`). Bundle `index.mjs` jest commitowany razem ze źródłem — to jeden artefakt repo.
+- Nie uruchamiaj dev servera bez pytania.
+- Nie duplikuj logiki między pluginami — deleguj przez `sdk.shared` i `activeId`.
+- Sprawdź `store.registerType()` dla WSZYSTKICH typów z seed data.
 
 ## Monorepo
 
@@ -31,11 +55,13 @@ obirg-zero/
 
 ## MCP `obieg-deploy`
 
-GitHub org: **obieg-zero-dev**. Branchy: `dev` = staging, `main` = prod + tagi semver.
+GitHub org: **obieg-zero-dev** (jedyne źródło). Branchy w każdym repo: `dev` = staging, `main` = prod + tagi semver.
 
-Cykl pluginu (kroki AI vs właściciela):
-- AI: `plugin_config_local` → edycja src → `plugin_build` → STOP, raport do właściciela
-- WŁAŚCICIEL ręcznie (AI nie tyka): `plugin_deploy_dev` → walidacja → `plugin_deploy_prod`
+Cykl pluginu:
+- **LLM:** edycja `src/` → `plugin_build` → `plugin_commit_local` → STOP, raport.
+- **Właściciel ręcznie:** `git push origin dev` (sygnał: kod na dev) → walidacja → `git push origin main` + `git tag vX.Y.Z && git push --tags` (sygnał: dev OK, prod).
+
+> Stare narzędzia `plugin_deploy_*`, `app_deploy_*`, `package_publish`, `push_core_host` są zachowane w MCP, ale **wyłącznie do ręcznego użytku właściciela**. LLM ich nie wywołuje pod żadnym pozorem (psuły model: pchały built bundle bez source, robiły nieoczekiwane bumpe wersji, nadpisywały `public/config.json`).
 
 ## Store API — synchroniczny CRUD
 
