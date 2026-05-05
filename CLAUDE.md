@@ -31,7 +31,7 @@ obirg-zero/
 
 ## MCP `obieg-deploy`
 
-GitHub org: **obieg-zero**. Branchy: `dev` = staging, `main` = prod + tagi semver.
+GitHub org: **obieg-zero-dev**. Branchy: `dev` = staging, `main` = prod + tagi semver.
 
 Cykl pluginu (kroki AI vs właściciela):
 - AI: `plugin_config_local` → edycja src → `plugin_build` → STOP, raport do właściciela

@@ -133,7 +133,7 @@ npm run test
   ├─────┼─────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────┤   
   │ 9   │ Mastery ring (gwiazdka)     │ Po 5 trafieniach na węźle pojawia się gwiazdka i pierścień zamiast liczby.                                              │ 50    │
   ├─────┼─────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────┤   
-  │ 10  │ RepoPicker z org GitHub     │ Lista wszystkich repo z org BrainEduPlay z topikiem brainquest, klikasz wybierasz przedmiot.                            │ 30    │
+  │ 10  │ RepoPicker z org GitHub     │ Lista wszystkich repo z org BQ-content z topikiem brainquest, klikasz wybierasz przedmiot.                              │ 30    │
   ├─────┼─────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────┤   
   │ 11  │ CheatSheet shared           │ Lewy panel pokazuje terminy odkryte w bieżącym kontekście, klik "czytaj" wraca do readera.                              │ 30+30 │
   ├─────┼─────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────┤   
