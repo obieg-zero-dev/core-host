@@ -45,9 +45,9 @@ oz pack list                          # lokalne + remote BQ-content
 oz build / oz guards / oz status
 ```
 
-Alias raz, w `.bashrc`/`.zshrc`:
+Instalacja raz (symlink w `~/.local/bin`, dziala w kazdym shellu bez source):
 ```bash
-alias oz='bash /home/dadmor/code/obirg-zero/CORE-HOST/scripts/oz'
+ln -sf /home/dadmor/code/obirg-zero/CORE-HOST/scripts/oz ~/.local/bin/oz
 ```
 
 ## Niezawodność (3 warstwy ochrony)

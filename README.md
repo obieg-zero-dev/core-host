@@ -26,8 +26,8 @@ Dane = jeden Zustand `posts` (id, type, parentId, data, createdAt, updatedAt) �
 git clone https://github.com/obieg-zero-dev/core-host
 cd core-host && npm install && npm run dev   # :5173
 
-# Skrót do narzędzi monorepo (raz, w .bashrc/.zshrc):
-alias oz='bash /home/dadmor/code/obirg-zero/CORE-HOST/scripts/oz'
+# Instalacja `oz` (raz — symlink, dziala w kazdym shellu):
+ln -sf /home/dadmor/code/obirg-zero/CORE-HOST/scripts/oz ~/.local/bin/oz
 oz help                                       # cała lista komend
 oz guards                                     # zainstaluj pre-push hooki w lokalnych repo
 ```
