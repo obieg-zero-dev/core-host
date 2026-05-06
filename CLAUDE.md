@@ -21,12 +21,26 @@ LLM nie pcha                 LLM nie tyka                        LLM nie tyka
 - **NIGDY nie pcha do `obieg-zero-dev`** — ani przez bash `git push`, ani przez MCP deploy.
 - Te narzędzia są usunięte z MCP whitelisty (od v0.2.0): `plugin_deploy_*`, `app_deploy_*`, `push_core_host`, `package_publish`, `bq_pack_publish`, `plugin_config_*`. Przed v0.2.0 LLM mógł je wywołać i robił bałagan (pchał bundle bez source, nadpisywał `public/config.json`).
 
-**Użytkownik (właściciel):** pcha przez skrypty z `CORE-HOST/scripts/`:
-- `bash scripts/promote-to-dev.sh <plugin-X|core-host|packages>` — LOCAL → DEV. Waliduje: working tree clean, build świeży (`index.mjs` nie starszy od `src/index.tsx`).
-- `bash scripts/promote-to-prod.sh <target> [vX.Y.Z]` — DEV → PROD. Waliduje: tag semver, istnienie `origin/dev`.
-- `bash scripts/bq-pack-init.sh <name> [--extends "<tytul>"] [--description "..."]` — szkielet nowej paczki kontentowej w `bq-content/<name>/` + `gh repo create BQ-content/<name>` z topikiem `brainquest`.
-- `bash scripts/bq-pack-validate.sh <name>` — walidacja struktury paczki przed publikacją.
-- `bash scripts/bq-pack-publish.sh <name> [vX.Y.Z] [--message "..."]` — publikacja paczki kontentowej. Auto-init git+remote+repo na pierwszym uruchomieniu.
+**Użytkownik (właściciel):** wszystkie operacje przez dispatcher **`oz`** (`CORE-HOST/scripts/oz`). `oz help` pokazuje pełną listę. Najczęściej:
+
+```bash
+oz promote dev  <plugin-X|core-host|packages>           # LOCAL → DEV
+oz promote prod <target> [vX.Y.Z]                       # DEV → PROD + tag
+oz pack init    <name> [--extends "..."] [--description "..."]
+oz pack validate <name>
+oz pack publish  <name> [vX.Y.Z] [--message "..."]
+oz pack list                                            # lokalne + BQ-content remote
+oz build                                                # wszystkie pluginy
+oz guards                                               # zainstaluj pre-push hooki
+oz status                                               # zmiany w pluginach + core-host
+```
+
+Instalacja skrótu (raz, w `.bashrc`/`.zshrc`):
+```bash
+alias oz='bash /home/dadmor/code/obirg-zero/CORE-HOST/scripts/oz'
+```
+
+`oz` to cienki dispatcher nad istniejącymi skryptami — pełna lista subkomend i argumentów w `oz help`. Nikt nie musi pamiętać długich `bash scripts/promote-to-dev.sh ...`.
 
 **Niezawodność (3 warstwy):**
 1. **`.git/hooks/pre-push`** w każdym lokalnym repo — blokuje direct `git push` (zarówno bash, jak i każdy klient git). Bypass tylko przez `OBIEG_PROMOTE=1` (eksportowane przez skrypty `promote-*`).

@@ -1,0 +1,153 @@
+#!/bin/bash
+# oz — dispatcher dla obieg-zero. Jedna komenda do zapamietania.
+# Uzycie: oz <komenda> [argumenty...]
+#         oz help
+
+set -euo pipefail
+
+SCRIPTS="$(dirname "$(realpath "$0")")"
+
+usage() {
+  cat <<'EOF'
+oz — toolkit obieg-zero
+
+UZYCIE
+  oz <komenda> [argumenty]
+
+PROMOCJA KODU (LOCAL → DEV → PROD)
+  oz promote dev  <target>             Push LOCAL → DEV   (origin/dev)
+  oz promote prod <target> [vX.Y.Z]    Push DEV   → PROD  (origin/main + tag)
+                                       target: plugin-X | core-host | packages
+
+PACZKI KONTENTOWE BQ (BQ-content org na GitHub)
+  oz pack init     <name> [opts]       Szkielet nowej paczki + git init + gh repo create
+                                       opts: --extends "<tytul-bazy>" --description "..."
+  oz pack validate <name>              Walidacja tree.json
+  oz pack publish  <name> [vX.Y.Z]     Validate → commit → push (auto-init przy pierwszym razie)
+  oz pack list                         Lista paczek (lokalnie + remote BQ-content)
+
+BUILD I SETUP
+  oz build                             Build wszystkich pluginow (regeneruje index.mjs)
+  oz guards                            Instalacja pre-push hookow we wszystkich repo
+  oz status                            Status: pluginy, paczki, lokalne zmiany
+
+POMOC
+  oz help                              Ten ekran
+  oz <cmd> --help                      Pomoc dla konkretnej komendy
+
+PRZYKLADY
+  oz promote dev plugin-brain-quest
+  oz promote prod plugin-brain-quest v0.5.2
+  oz pack init bq-polski-matura-fil --extends "Polski — matura (mini)" --description "Konteksty filozoficzne"
+  oz pack publish bq-polski-matura-mit v0.1.0
+  oz build && oz promote dev plugin-brain-quest
+
+INSTALACJA SKROTU (raz)
+  alias oz='bash /home/dadmor/code/obirg-zero/CORE-HOST/scripts/oz'   # do .bashrc/.zshrc
+  # lub: ln -s /home/dadmor/code/obirg-zero/CORE-HOST/scripts/oz ~/.local/bin/oz
+EOF
+}
+
+cmd="${1:-help}"
+[ "$cmd" = "--help" ] && cmd="help"
+[ "$cmd" = "-h" ] && cmd="help"
+shift || true
+
+case "$cmd" in
+  help|"")
+    usage
+    ;;
+
+  promote)
+    level="${1:-}"
+    [ -z "$level" ] && { echo "Uzycie: oz promote <dev|prod> <target> [vX.Y.Z]"; exit 1; }
+    shift
+    case "$level" in
+      dev)  exec bash "$SCRIPTS/promote-to-dev.sh"  "$@" ;;
+      prod) exec bash "$SCRIPTS/promote-to-prod.sh" "$@" ;;
+      *) echo "Nieznany level: $level (oczekiwane: dev|prod)"; exit 1 ;;
+    esac
+    ;;
+
+  pack)
+    sub="${1:-}"
+    [ -z "$sub" ] && { echo "Uzycie: oz pack <init|validate|publish|list> [args]"; exit 1; }
+    shift
+    case "$sub" in
+      init)     exec bash "$SCRIPTS/bq-pack-init.sh"     "$@" ;;
+      validate) exec bash "$SCRIPTS/bq-pack-validate.sh" "$@" ;;
+      publish)  exec bash "$SCRIPTS/bq-pack-publish.sh"  "$@" ;;
+      list)
+        echo "=== Lokalne paczki (bq-content/) ==="
+        if [ -d /home/dadmor/code/obirg-zero/bq-content ]; then
+          for d in /home/dadmor/code/obirg-zero/bq-content/*/; do
+            [ -d "$d" ] || continue
+            name=$(basename "$d")
+            git_status="(brak git)"
+            if [ -d "$d/.git" ]; then
+              cd "$d"
+              if git remote get-url origin >/dev/null 2>&1; then
+                git_status="-> $(git remote get-url origin | sed 's|git@github.com:||;s|.git$||')"
+              else
+                git_status="(local-only)"
+              fi
+              cd - >/dev/null
+            fi
+            printf "  %-40s %s\n" "$name" "$git_status"
+          done
+        fi
+        echo ""
+        echo "=== Remote paczki (BQ-content org, topic:brainquest) ==="
+        if command -v gh >/dev/null 2>&1; then
+          gh api 'search/repositories?q=org:BQ-content+topic:brainquest&per_page=100' \
+            --jq '.items[] | "  \(.name) — \(.description // "")"' 2>/dev/null \
+            || echo "  (gh API niedostepne)"
+        else
+          echo "  (gh CLI nie zainstalowany)"
+        fi
+        ;;
+      *) echo "Nieznana subkomenda: pack $sub (oczekiwane: init|validate|publish|list)"; exit 1 ;;
+    esac
+    ;;
+
+  build)
+    cd /home/dadmor/code/obirg-zero/plugins
+    exec npm run build
+    ;;
+
+  guards)
+    exec bash "$SCRIPTS/install-guards.sh"
+    ;;
+
+  status)
+    echo "=== Pluginy (lokalne git status) ==="
+    for d in /home/dadmor/code/obirg-zero/plugins/plugin-*; do
+      [ -d "$d/.git" ] || continue
+      name=$(basename "$d")
+      cd "$d"
+      changes=$(git status --porcelain | wc -l)
+      branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "?")
+      ahead=$(git rev-list --count "@{u}..HEAD" 2>/dev/null || echo "?")
+      printf "  %-32s %s  %d zmian  %s ahead\n" "$name" "$branch" "$changes" "$ahead"
+      cd - >/dev/null
+    done
+    echo ""
+    echo "=== CORE-HOST + packages ==="
+    for d in /home/dadmor/code/obirg-zero/CORE-HOST /home/dadmor/code/obirg-zero/packages; do
+      [ -d "$d/.git" ] || continue
+      name=$(basename "$d")
+      cd "$d"
+      changes=$(git status --porcelain | wc -l)
+      branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "?")
+      printf "  %-32s %s  %d zmian\n" "$name" "$branch" "$changes"
+      cd - >/dev/null
+    done
+    ;;
+
+  *)
+    echo "Nieznana komenda: $cmd"
+    echo ""
+    usage
+    exit 1
+    ;;
+esac
