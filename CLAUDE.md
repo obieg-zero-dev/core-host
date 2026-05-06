@@ -1,175 +1,172 @@
-# Obieg Zero — core-host
+# obieg-zero / core-host
 
-Platforma pluginowa w przeglądarce. Zustand + IndexedDB + OPFS, zero backendu.
+Platforma pluginowa w przeglądarce. React 19 + Zustand + IndexedDB + OPFS. Zero backendu. Pluginy ładowane runtime z CDN/OPFS.
 
-## Model promocji (FUNDAMENT — przeczytaj zanim cokolwiek zrobisz)
-
-Standardowy git flow z trzema warstwami: **local → dev → prod**.
+## Layout
 
 ```
-LOCAL (Twój dysk)              DEV (obieg-zero-dev/X:dev)        PROD (obieg-zero-dev/X:main)
-   ↓                                ↓                                  ↓
-LLM edytuje source           kopia z LOCAL gdy user da sygnał    kopia z DEV gdy user da sygnał
-LLM commituje LOKALNIE       (user pcha: git push origin dev)    (user pcha: git push origin main)
-LLM nie pcha                 LLM nie tyka                        LLM nie tyka
+obieg-zero/
+├── CORE-HOST/      Vite + React 19, host pluginów   ← TUTAJ
+├── plugins/        plugin-*/src/index.tsx → plugin-*/index.mjs (bundle)
+├── packages/       @obieg-zero/* (sdk, mcp-deploy, workflow-engine, ...)
+└── bq-content/     lokalny mirror paczek BQ → push do org BQ-content
 ```
 
-**LLM (Ty):**
-- Edytuje source code w `plugins/plugin-X/src/`, `packages/*/src/`, `CORE-HOST/src/`.
-- Buduje lokalnie (`plugin_build` MCP albo `npm run build`).
-- Commituje LOKALNIE przez `*_commit_local` MCP (`plugin_commit_local`, `core_host_commit_local`, `packages_commit_local`).
-- **NIGDY nie pcha do `obieg-zero-dev`** — ani przez bash `git push`, ani przez MCP deploy.
-- Te narzędzia są usunięte z MCP whitelisty (od v0.2.0): `plugin_deploy_*`, `app_deploy_*`, `push_core_host`, `package_publish`, `bq_pack_publish`, `plugin_config_*`. Przed v0.2.0 LLM mógł je wywołać i robił bałagan (pchał bundle bez source, nadpisywał `public/config.json`).
+Każde z `core-host`, `packages`, `plugin-*` to osobny git repo w org `obieg-zero-dev`. Każde trzyma source + bundle + meta na każdej gałęzi (brak osobnych "release-only" repo).
 
-**Użytkownik (właściciel):** wszystkie operacje przez dispatcher **`oz`** (`CORE-HOST/scripts/oz`). `oz help` pokazuje pełną listę. Najczęściej:
+## Pętla pracy LLM
+
+```
+1. Czytaj MEMORY.md
+2. Edit src/
+3. oz build                # regeneruje plugin-*/index.mjs
+4. *_commit_local (MCP)    # plugin_commit_local / core_host_commit_local / packages_commit_local
+5. STOP. Raport. User decyduje czy promować.
+```
+
+LLM **nie pcha** — ani `git push`, ani MCP `*_deploy_*`. Push wyłącznie user przez `oz`.
+
+## Promocja: LOCAL → DEV → PROD
+
+```
+LOCAL (dysk)        DEV (origin/dev)        PROD (origin/main + tag vX.Y.Z)
+     ↓                    ↓                          ↓
+oz promote dev    oz promote prod        oz promote prod <target> vX.Y.Z
+```
+
+Wszystko (user) przez `oz` (dispatcher nad skryptami). Pełna lista: `oz help`.
 
 ```bash
-oz promote dev  <plugin-X|core-host|packages>           # LOCAL → DEV
-oz promote prod <target> [vX.Y.Z]                       # DEV → PROD + tag
-oz pack init    <name> [--extends "..."] [--description "..."]
-oz pack validate <name>
-oz pack publish  <name> [vX.Y.Z] [--message "..."]
-oz pack list                                            # lokalne + BQ-content remote
-oz build                                                # wszystkie pluginy
-oz guards                                               # zainstaluj pre-push hooki
-oz status                                               # zmiany w pluginach + core-host
+oz promote dev  <plugin-X|core-host|packages>
+oz promote prod <target> [vX.Y.Z]
+oz pack init    <name> [--extends "<tytul>"] [--description "..."]
+oz pack publish <name> [vX.Y.Z]      # auto-init git+remote+gh repo create
+oz pack list                          # lokalne + remote BQ-content
+oz build / oz guards / oz status
 ```
 
-Instalacja skrótu (raz, w `.bashrc`/`.zshrc`):
+Alias raz, w `.bashrc`/`.zshrc`:
 ```bash
 alias oz='bash /home/dadmor/code/obirg-zero/CORE-HOST/scripts/oz'
 ```
 
-`oz` to cienki dispatcher nad istniejącymi skryptami — pełna lista subkomend i argumentów w `oz help`. Nikt nie musi pamiętać długich `bash scripts/promote-to-dev.sh ...`.
+## Niezawodność (3 warstwy ochrony)
 
-**Niezawodność (3 warstwy):**
-1. **`.git/hooks/pre-push`** w każdym lokalnym repo — blokuje direct `git push` (zarówno bash, jak i każdy klient git). Bypass tylko przez `OBIEG_PROMOTE=1` (eksportowane przez skrypty `promote-*`).
-2. **Hook `block-direct-git.sh`** w Claude Code — blokuje bash `git push/add/commit` w sesji AI, dopóki komenda nie zawiera `.sh` (czyli idzie przez skrypt).
-3. **Brak narzędzi push w MCP `obieg-deploy v0.2.0`** — LLM nawet jeśli chciałby, nie ma jak.
+| Warstwa | Blokuje | Bypass |
+|---------|---------|--------|
+| `.git/hooks/pre-push` w każdym repo | direct `git push` (bash + klient git) | `OBIEG_PROMOTE=1` (skrypty `promote-*.sh`) |
+| `block-direct-git.sh` (Claude Code hook) | bash `git push/add/commit` w sesji LLM | komenda zawiera `.sh` (przez skrypt) |
+| MCP `obieg-deploy` whitelista | brak narzędzi push | n/d |
 
-**Setup w nowym klonie:** `bash core-host/scripts/install-guards.sh` (instaluje pre-push hook w lokalnych repo).
+Setup w nowym klonie: `oz guards`.
 
-**Reguła kontekstu:** `obieg-zero-dev` to JEDYNE źródło kodu projektu. Każde repo ma source + bundle + meta razem na każdej gałęzi. Nie istnieją osobne "release-only" repozytoria. Jeśli czegoś nie ma na `obieg-zero-dev`, to nie istnieje.
+## Reguły LLM
 
-## Zanim cokolwiek zrobisz
+| Wolno (whitelist) | Zakaz |
+|-------------------|-------|
+| MCP read+commit-local: `plugin_build`, `plugin_status`, `app_status`, `check_sync`, `package_status`, `bq_pack_status`, `*_commit_local` | MCP push: `*_deploy_*`, `*_publish`, `push_*` (usunięte z whitelisty od v0.2.0) |
+| `gh` CLI read-only: `gh api`, `gh repo view`, `gh pr view` | `gh repo create`, `gh pr merge`, `gh repo edit` |
+| Edycja plików w `bq-content/<name>/` | `oz pack publish` (push do shared GitHub org) |
 
-1. `check_sync` — stan pluginów, paczek, aplikacji.
-2. Przeczytaj MEMORY.md — kontekst z poprzednich rozmów.
-3. Plan zmian → edycja → build → `*_commit_local` → STOP. User decyduje co dalej.
+Pozostałe:
+- Polskie diakrytyki w UI.
+- Build pluginu po każdej edycji (`oz build` lub `plugin_build` MCP) — bundle `index.mjs` jest commitowany razem ze źródłem.
+- Nie duplikuj logiki między pluginami — deleguj przez `sdk.shared` + `sdk.useHostStore.activeId`.
+- `store.registerType()` dla WSZYSTKICH typów z seed data (bez tego dane lecą do `unknown`).
+- Dev server tylko na żądanie.
 
-## Zasady
-
-- Polskie znaki diakrytyczne w UI.
-- **LLM ma BEZWZGLĘDNY ZAKAZ pchania kodu** na `obieg-zero-dev` (ani bash `git push`, ani MCP `*_deploy_*`/`*_publish`/`push_core_host`). Każda taka operacja jest wykonywana wyłącznie ręcznie przez właściciela.
-- LLM wolno (whitelist): `plugin_build`, `plugin_status`, `app_status`, `check_sync`, `package_status`, `plugin_commit_local`, `core_host_commit_local`, `packages_commit_local`, `bq_pack_status`. Plus `gh` CLI tylko read-only (`gh api`, `gh repo view`, `gh pr view`).
-- Build pluginów po każdej edycji: `plugin_build` (regeneruje `index.mjs`). Bundle `index.mjs` jest commitowany razem ze źródłem — to jeden artefakt repo.
-- Nie uruchamiaj dev servera bez pytania.
-- Nie duplikuj logiki między pluginami — deleguj przez `sdk.shared` i `activeId`.
-- Sprawdź `store.registerType()` dla WSZYSTKICH typów z seed data.
-
-## Monorepo
-
-```
-obirg-zero/
-├── CORE-HOST/              ← TU JESTEŚ (Vite + React 19)
-├── plugins/                ← plugin-*/src/index.tsx → plugin-*/index.mjs
-├── packages/               ← @obieg-zero/* (sdk, mcp-deploy, workflow-engine, doc-*, text-pl)
-└── bq-content/             ← lokalne mirrory paczek kontentowych BQ (każda = osobny git repo, push do BQ-content/<name>)
-```
-
-## Paczki kontentowe BQ (`bq-content/`)
-
-Paczki kontentowe `BrainQuest` żyją jako osobne repa w org GitHub **`BQ-content`** (NIE `obieg-zero-dev`), wykrywane przez `RepoPicker` w `plugin-brain-quest` po topice `brainquest`. Lokalnie każda paczka to osobny git repo w `bq-content/<name>/`.
-
-Format: `tree.json` (seed format dla `importTreeSeed`) + `lexicon/<nodeId>.json` (terminy + quiz) + `content/<nodeId>.json` (slajdy do readera). Rozszerzenia używają pola `extends` w `tree.json` (id lub tytuł bazy) → merge w istniejące drzewo z deduplikacją po `nodeId`/edge-key.
-
-LLM edytuje pliki w `bq-content/<name>/` przez Write/Edit. Skrypty `bq-pack-*` odpala wyłącznie właściciel (push do shared GitHub org). Pełny workflow: `bq-content/README.md`.
-
-## MCP `obieg-deploy` (v0.2.0)
-
-GitHub org: **obieg-zero-dev** (jedyne źródło). Branchy w każdym repo: `dev` = staging, `main` = prod + tagi semver.
-
-Wystawione narzędzia (read + lokalny commit, zero pchania):
-- `check_sync`, `plugin_status`, `package_status`, `app_status` — audyty.
-- `plugin_build` — buduje wszystkie pluginy (`plugins/plugin-*/index.mjs`).
-- `plugin_commit_local`, `core_host_commit_local`, `packages_commit_local` — commit lokalny w odpowiednim repo, bez push.
-- `bq_pack_status` — status paczki kontentu BQ.
-- `setup_creem` — sync z Creem (płatności).
-
-Cykl pluginu:
-- **LLM:** edycja `src/` → `plugin_build` → `plugin_commit_local` → STOP, raport.
-- **Właściciel:** `bash scripts/promote-to-dev.sh plugin-X` → walidacja → `bash scripts/promote-to-prod.sh plugin-X vX.Y.Z`.
-
-## Store API — synchroniczny CRUD
+## Store API (sync CRUD)
 
 ```ts
 store.add(type, data, opts?)     // → PostRecord, opts: { id?, parentId? }
-store.get(id)                    // sync
-store.update(id, data)           // sync merge
-store.remove(id)                 // sync, cascade children
+store.get(id)
+store.update(id, data)           // merge
+store.remove(id)                 // cascade children
 store.usePosts(type)             // hook → PostRecord[]
-store.usePost(id)                // hook
+store.usePost(id)
 store.useChildren(parentId, type?)
 store.registerType(type, schema, label, { strict? })
 store.importJSON(nodes)          // bulk: [{ type, data, children? }]
 store.setOption(key, value) / store.useOption(key)
-store.writeFile(postId, name, data) / store.readFile / store.listFiles
+store.writeFile(postId, name, data) / readFile / listFiles   // OPFS
 ```
 
-Relacje: `parentId` (cascade delete), `data.XId` (foreign key). Wartości w `data` to stringi — parsuj JSON ręcznie.
+Relacje: `parentId` (cascade delete) lub `data.XId` (foreign key).
+**Wartości w `data` to stringi** — JSON parsuj ręcznie (`jparse(s, fallback)`).
 
 ## SDK API
 
 ```ts
 sdk.registerView(id, { slot: 'left'|'center'|'right'|'footer', component })
 sdk.shared(selector) / sdk.shared.setState(partial) / sdk.shared.getState()
-sdk.create(() => initialState)   // lokalny Zustand store
-sdk.useForm(defaults, { isComplete? })  // → { form, bind, set, submit, toggle, reset }
-sdk.useHostStore                 // pluginy, logi, activeId, leftOpen
+sdk.create(() => initialState)             // lokalny Zustand store pluginu
+sdk.useForm(defaults, { isComplete? })     // { form, bind, set, submit, toggle, reset }
+sdk.useHostStore                           // pluginy, logi, activeId, leftOpen
 sdk.log(text, level?)
 sdk.uploadFile(parentId) / sdk.downloadFile(postId, filename)
 sdk.installPlugin(spec, label?) / sdk.uninstallPlugin(spec)
 ```
 
-**UI:** `Page, Stack, Row, Box, Button, Input, Select, Field, Tabs, Cell, Table, Card, Badge, Heading, Text, Value, ListItem, CheckItem, Spinner, Divider, RemoveButton`
+**UI** (`ui.*`): `Page, Stack, Row, Box, Button, Input, Select, Field, Tabs, Cell, Table, Card, Badge, Heading, Text, Value, ListItem, CheckItem, Spinner, Divider, RemoveButton`
+**Ikony**: react-feather (`icons.Map`, `icons.BookOpen`, `icons.Zap`, ...)
 
-**Ikony:** react-feather, np. `icons.Map`, `icons.BookOpen`, `icons.Zap`
-
-**ZAKAZANE w pluginach:** `fetch`, `className`, `import()`, `localStorage`, `await` na store
+**Zakazane w pluginach**: `fetch`, `className`, dynamic `import()`, `localStorage`, `await` na store (store jest sync).
 
 ## Plugin — wzorzec
 
 ```tsx
 import type { PluginFactory } from '@obieg-zero/sdk'
+
 const plugin: PluginFactory = ({ React, store, sdk, ui, icons }) => {
-  store.registerType('task', [{ key: 'title', label: 'Tytuł', required: true }], 'Zadania')
+  store.registerType('task', [
+    { key: 'title', label: 'Tytuł', required: true },
+  ], 'Zadania')
   sdk.registerView('tasks.center', { slot: 'center', component: MyComponent })
   return { id: 'tasks', label: 'Zadania', icon: icons.CheckSquare }
 }
 export default plugin
 ```
 
-Komunikacja: `sdk.shared.setState({ bqHelpers: {...} })` + `sdk.shared(s => s?.bqHelpers)`
-Przełączanie pluginu: `sdk.useHostStore.setState({ activeId: 'other-id' })`
+Komunikacja między pluginami:
+```ts
+sdk.shared.setState({ bqHelpers: { discover, edgeStr, ... } })   // wystawienie
+const helpers = sdk.shared(s => s?.bqHelpers)                     // konsumpcja
+sdk.useHostStore.setState({ activeId: 'plugin-other' })           // przełączenie
+```
 
-## Architektura src/
+## Paczki kontentowe BQ (`bq-content/`)
+
+GitHub org: **`BQ-content`** (osobny od `obieg-zero-dev`). Topic: `brainquest`. Wykrywane przez `RepoPicker` w `plugin-brain-quest`.
+
+Lokalnie każda paczka = osobny git repo:
+```
+bq-content/<name>/
+├── tree.json              seed format dla importTreeSeed (drzewo / rozszerzenie)
+├── lexicon/<nodeId>.json  terminy + quiz
+└── content/<nodeId>.json  slajdy do readera
+```
+
+**Rozszerzenia**: `tree.json` z polem `extends: "<id-bazy>"` (lub tytuł) → merge w istniejące drzewo, dedupe po `nodeId` / `from:to:type` / `branch.key` / `relType.key`. Implementacja: `plugin-brain-quest/src/index.tsx :: importTreeSeed`.
+
+Workflow: `oz pack init/validate/publish/list`. LLM edytuje pliki, user pcha. Pełny opis: `bq-content/README.md`.
+
+## src/
 
 ```
-main.tsx         → bootstrap: config → store → SDK → Shell → load plugins
-store.ts         → Zustand + IndexedDB, CRUD, pliki OPFS
-plugin.ts        → useHostStore, loader, registries, SDK factory
-opfs.ts          → cache pluginów, meta.json (specs, labels, licenseKey)
-Shell.tsx        → hooki → filtruje widoki → props do ShellLayout
-themes/default/  → czyste JSX komponenty (zero hooków, dane z props)
+main.tsx         bootstrap: config → store → SDK → Shell → load plugins
+store.ts         Zustand + IndexedDB, CRUD, pliki OPFS
+plugin.ts        useHostStore, loader, registries, SDK factory
+opfs.ts          cache pluginów, meta.json (specs, labels, licenseKey)
+Shell.tsx        hooki → filtruje widoki → props do ShellLayout
+themes/default/  czyste JSX (zero hooków, dane z props)
 ```
 
 ## Build
 
 ```bash
-npm run dev       # CORE-HOST: Vite :5173, middleware serwuje ../plugins/
+oz build          # plugins/: plugin-*/src/index.tsx → plugin-*/index.mjs
+npm run dev       # CORE-HOST: Vite :5173 + middleware ../plugins/
 npm run build     # CORE-HOST: produkcja → dist/
-# plugins/
-npm run build     # Vite: plugin-*/src/index.tsx → plugin-*/index.mjs
 ```
 
-Czytaj README paczek (`../packages/*/README.md`) przed ich użyciem.
+Przed użyciem paczki z `packages/` — przeczytaj jej `README.md`.
