@@ -24,6 +24,9 @@ LLM nie pcha                 LLM nie tyka                        LLM nie tyka
 **Użytkownik (właściciel):** pcha przez skrypty z `CORE-HOST/scripts/`:
 - `bash scripts/promote-to-dev.sh <plugin-X|core-host|packages>` — LOCAL → DEV. Waliduje: working tree clean, build świeży (`index.mjs` nie starszy od `src/index.tsx`).
 - `bash scripts/promote-to-prod.sh <target> [vX.Y.Z]` — DEV → PROD. Waliduje: tag semver, istnienie `origin/dev`.
+- `bash scripts/bq-pack-init.sh <name> [--extends "<tytul>"] [--description "..."]` — szkielet nowej paczki kontentowej w `bq-content/<name>/` + `gh repo create BQ-content/<name>` z topikiem `brainquest`.
+- `bash scripts/bq-pack-validate.sh <name>` — walidacja struktury paczki przed publikacją.
+- `bash scripts/bq-pack-publish.sh <name> [vX.Y.Z] [--message "..."]` — publikacja paczki kontentowej. Auto-init git+remote+repo na pierwszym uruchomieniu.
 
 **Niezawodność (3 warstwy):**
 1. **`.git/hooks/pre-push`** w każdym lokalnym repo — blokuje direct `git push` (zarówno bash, jak i każdy klient git). Bypass tylko przez `OBIEG_PROMOTE=1` (eksportowane przez skrypty `promote-*`).
@@ -56,8 +59,17 @@ LLM nie pcha                 LLM nie tyka                        LLM nie tyka
 obirg-zero/
 ├── CORE-HOST/              ← TU JESTEŚ (Vite + React 19)
 ├── plugins/                ← plugin-*/src/index.tsx → plugin-*/index.mjs
-└── packages/               ← @obieg-zero/* (sdk, mcp-deploy, workflow-engine, doc-*, text-pl)
+├── packages/               ← @obieg-zero/* (sdk, mcp-deploy, workflow-engine, doc-*, text-pl)
+└── bq-content/             ← lokalne mirrory paczek kontentowych BQ (każda = osobny git repo, push do BQ-content/<name>)
 ```
+
+## Paczki kontentowe BQ (`bq-content/`)
+
+Paczki kontentowe `BrainQuest` żyją jako osobne repa w org GitHub **`BQ-content`** (NIE `obieg-zero-dev`), wykrywane przez `RepoPicker` w `plugin-brain-quest` po topice `brainquest`. Lokalnie każda paczka to osobny git repo w `bq-content/<name>/`.
+
+Format: `tree.json` (seed format dla `importTreeSeed`) + `lexicon/<nodeId>.json` (terminy + quiz) + `content/<nodeId>.json` (slajdy do readera). Rozszerzenia używają pola `extends` w `tree.json` (id lub tytuł bazy) → merge w istniejące drzewo z deduplikacją po `nodeId`/edge-key.
+
+LLM edytuje pliki w `bq-content/<name>/` przez Write/Edit. Skrypty `bq-pack-*` odpala wyłącznie właściciel (push do shared GitHub org). Pełny workflow: `bq-content/README.md`.
 
 ## MCP `obieg-deploy` (v0.2.0)
 

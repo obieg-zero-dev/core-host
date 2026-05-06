@@ -23,6 +23,13 @@ install_hook /home/dadmor/code/obirg-zero/packages
 for d in /home/dadmor/code/obirg-zero/plugins/plugin-*; do
   install_hook "$d"
 done
+# Paczki kontentowe BQ — kazda to osobny git repo
+if [ -d /home/dadmor/code/obirg-zero/bq-content ]; then
+  for d in /home/dadmor/code/obirg-zero/bq-content/*/; do
+    [ -d "$d" ] && install_hook "${d%/}"
+  done
+fi
 echo ""
 echo "Guard aktywny. Direct 'git push' w tych repo zostanie zablokowany."
-echo "Promocja: bash CORE-HOST/scripts/promote-to-{dev,prod}.sh <target>"
+echo "Promocja kodu:    bash CORE-HOST/scripts/promote-to-{dev,prod}.sh <target>"
+echo "Publikacja paczki: bash CORE-HOST/scripts/bq-pack-publish.sh <nazwa>"
