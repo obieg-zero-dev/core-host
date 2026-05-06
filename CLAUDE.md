@@ -74,6 +74,7 @@ Pozostałe:
 - Nie duplikuj logiki między pluginami — deleguj przez `sdk.shared` + `sdk.useHostStore.activeId`.
 - `store.registerType()` dla WSZYSTKICH typów z seed data (bez tego dane lecą do `unknown`).
 - Dev server tylko na żądanie.
+- **Gdy user musi sam uruchomić komendę** (push do shared infra, `oz promote`, `oz pack publish`, dev server, interactive auth) — pisz dokładnie: `wpisz "! <komenda>"`. Prefiks `!` uruchamia komendę w tej sesji Claude Code, output wraca do rozmowy. NIE pisz „uruchom w terminalu" / „odpal u siebie" — user nie chce skakać między oknami.
 
 ## Store API (sync CRUD)
 
