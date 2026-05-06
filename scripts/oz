@@ -15,6 +15,7 @@ UZYCIE
   oz <komenda> [argumenty]
 
 PROMOCJA KODU (LOCAL → DEV → PROD)
+  oz plugin init  <plugin-name>                  Init nowego pluginu: git init + gh repo create + push (raz)
   oz promote dev  <target>...                    Push LOCAL → DEV   (jeden lub wiele targetow)
   oz promote prod <target>... [vX.Y.Z]           Push DEV   → PROD  (wszystkie pod ten sam tag)
                                                  target: plugin-X | core-host | packages
@@ -155,6 +156,16 @@ case "$cmd" in
   build)
     cd /home/dadmor/code/obirg-zero/plugins
     exec npm run build
+    ;;
+
+  plugin)
+    sub="${1:-}"
+    [ -z "$sub" ] && { echo "Uzycie: oz plugin init <plugin-name>"; exit 1; }
+    shift
+    case "$sub" in
+      init) exec bash "$SCRIPTS/plugin-init.sh" "$@" ;;
+      *) echo "Nieznana subkomenda: plugin $sub (oczekiwane: init)"; exit 1 ;;
+    esac
     ;;
 
   guards)
