@@ -1,5 +1,8 @@
 [
   {
+    "pluginUri": "./plugin-bq-loader"
+  },
+  {
     "pluginUri": "./plugin-brain-quest"
   },
   {
