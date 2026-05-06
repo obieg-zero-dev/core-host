@@ -150,15 +150,19 @@ bq-content/<name>/
 
 Workflow: `oz pack init/validate/publish/list`. LLM edytuje pliki, user pcha. Pełny opis: `bq-content/README.md`.
 
-## src/
+## Kod
+
+CORE-HOST jest cienki — tylko `src/main.tsx` (5 LOC, woła `bootRuntime`) + `index.css`. Cała logika żyje w **`packages/runtime/`**:
 
 ```
-main.tsx         bootstrap: config → store → SDK → Shell → load plugins
-store.ts         Zustand + IndexedDB, CRUD, pliki OPFS
-plugin.ts        useHostStore, loader, registries, SDK factory
-opfs.ts          cache pluginów, meta.json (specs, labels, licenseKey)
-Shell.tsx        hooki → filtruje widoki → props do ShellLayout
-themes/default/  czyste JSX (zero hooków, dane z props)
+packages/runtime/src/
+  boot.tsx         bootstrap: config → store → SDK → Shell → load plugins
+  store.ts         Zustand + IndexedDB, CRUD
+  plugin.ts        useHostStore, loader, registries, SDK factory
+  opfs.ts          cache pluginów, meta.json (specs, labels, licenseKey)
+  Shell.tsx        hooki → filtruje widoki → props do ShellLayout
+  stageRegistry.ts rejestr stage'ów (workflow-engine)
+  themes/          motywy UI (czyste JSX, dane z props)
 ```
 
 Dev: `npm run dev` w CORE-HOST (Vite :5173, middleware servuje `../plugins/`). Produkcja: `npm run build` → `dist/`.
