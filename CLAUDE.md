@@ -24,7 +24,7 @@ Każde z `core-host`, `packages`, `plugin-*` to osobny git repo w org `obieg-zer
 5. STOP. Raport. User decyduje czy promować.
 ```
 
-LLM **nie pcha** — ani `git push`, ani MCP `*_deploy_*`. Push wyłącznie user przez `oz`.
+Push: tylko user, tylko przez `oz`.
 
 ## Promocja: LOCAL → DEV → PROD
 
@@ -34,7 +34,7 @@ LOCAL (dysk)        DEV (origin/dev)        PROD (origin/main + tag vX.Y.Z)
 oz promote dev    oz promote prod        oz promote prod <target> vX.Y.Z
 ```
 
-Wszystko (user) przez `oz` (dispatcher nad skryptami). Pełna lista: `oz help`.
+Pełna lista komend: `oz help`.
 
 ```bash
 oz promote dev  <plugin-X|core-host|packages>
@@ -70,7 +70,7 @@ Setup w nowym klonie: `oz guards`.
 
 Pozostałe:
 - Polskie diakrytyki w UI.
-- Build pluginu po każdej edycji (`oz build` lub `plugin_build` MCP) — bundle `index.mjs` jest commitowany razem ze źródłem.
+- Bundle `index.mjs` commitowany razem ze źródłem (jeden artefakt repo).
 - Nie duplikuj logiki między pluginami — deleguj przez `sdk.shared` + `sdk.useHostStore.activeId`.
 - `store.registerType()` dla WSZYSTKICH typów z seed data (bez tego dane lecą do `unknown`).
 - Dev server tylko na żądanie.
@@ -161,12 +161,4 @@ Shell.tsx        hooki → filtruje widoki → props do ShellLayout
 themes/default/  czyste JSX (zero hooków, dane z props)
 ```
 
-## Build
-
-```bash
-oz build          # plugins/: plugin-*/src/index.tsx → plugin-*/index.mjs
-npm run dev       # CORE-HOST: Vite :5173 + middleware ../plugins/
-npm run build     # CORE-HOST: produkcja → dist/
-```
-
-Przed użyciem paczki z `packages/` — przeczytaj jej `README.md`.
+Dev: `npm run dev` w CORE-HOST (Vite :5173, middleware servuje `../plugins/`). Produkcja: `npm run build` → `dist/`.
