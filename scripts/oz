@@ -15,16 +15,16 @@ UZYCIE
   oz <komenda> [argumenty]
 
 PROMOCJA KODU (LOCAL → DEV → PROD)
-  oz promote dev  <target>             Push LOCAL → DEV   (origin/dev)
-  oz promote prod <target> [vX.Y.Z]    Push DEV   → PROD  (origin/main + tag)
-                                       target: plugin-X | core-host | packages
+  oz promote dev  <target>...                    Push LOCAL → DEV   (jeden lub wiele targetow)
+  oz promote prod <target>... [vX.Y.Z]           Push DEV   → PROD  (wszystkie pod ten sam tag)
+                                                 target: plugin-X | core-host | packages
 
 PACZKI KONTENTOWE BQ (BQ-content org na GitHub)
-  oz pack init     <name> [opts]       Szkielet nowej paczki + git init + gh repo create
-                                       opts: --extends "<tytul-bazy>" --description "..."
-  oz pack validate <name>              Walidacja tree.json
-  oz pack publish  <name> [vX.Y.Z]     Validate → commit → push (auto-init przy pierwszym razie)
-  oz pack list                         Lista paczek (lokalnie + remote BQ-content)
+  oz pack init     <name> [opts]                 Szkielet nowej paczki + git init + gh repo create
+                                                 opts: --extends "<tytul-bazy>" --description "..."
+  oz pack validate <name>                        Walidacja tree.json
+  oz pack publish  [vX.Y.Z] [--message "..."] <name>...   Validate → commit → push (jedna lub wiele paczek)
+  oz pack list                                   Lista paczek (lokalnie + remote BQ-content)
 
 BUILD I SETUP
   oz build                             Build wszystkich pluginow (regeneruje index.mjs)
@@ -36,10 +36,10 @@ POMOC
   oz <cmd> --help                      Pomoc dla konkretnej komendy
 
 PRZYKLADY
-  oz promote dev plugin-brain-quest
-  oz promote prod plugin-brain-quest v0.5.2
-  oz pack init bq-polski-matura-fil --extends "Polski — matura (mini)" --description "Konteksty filozoficzne"
-  oz pack publish bq-polski-matura-mit v0.1.0
+  oz promote dev plugin-brain-quest core-host                         # 2 repa naraz
+  oz promote prod plugin-brain-quest plugin-brain-quest-arena v0.5.2  # 2 pluginy, jeden tag
+  oz pack init bq-polski-matura-fil --extends "Polski — matura (mini)"
+  oz pack publish v0.1.0 --message "Init konteksty" bq-polski-matura-mit bq-polski-matura-bibl
   oz build && oz promote dev plugin-brain-quest
 
 INSTALACJA SKROTU (raz)
@@ -60,11 +60,33 @@ case "$cmd" in
 
   promote)
     level="${1:-}"
-    [ -z "$level" ] && { echo "Uzycie: oz promote <dev|prod> <target> [vX.Y.Z]"; exit 1; }
+    [ -z "$level" ] && { echo "Uzycie: oz promote <dev|prod> <target>... [vX.Y.Z] [--allow-dirty]"; exit 1; }
     shift
     case "$level" in
-      dev)  exec bash "$SCRIPTS/promote-to-dev.sh"  "$@" ;;
-      prod) exec bash "$SCRIPTS/promote-to-prod.sh" "$@" ;;
+      dev)
+        # Wiele targetow naraz: oz promote dev plugin-A plugin-B core-host
+        flag=""
+        targets=()
+        for arg in "$@"; do
+          if [ "$arg" = "--allow-dirty" ]; then flag="$arg"; else targets+=("$arg"); fi
+        done
+        [ ${#targets[@]} -eq 0 ] && { echo "Brak targetow"; exit 1; }
+        for t in "${targets[@]}"; do
+          bash "$SCRIPTS/promote-to-dev.sh" "$t" $flag
+        done
+        ;;
+      prod)
+        # Wiele targetow z jednym tagiem: oz promote prod plugin-A plugin-B v0.5.2
+        tag=""
+        targets=()
+        for arg in "$@"; do
+          if [[ "$arg" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then tag="$arg"; else targets+=("$arg"); fi
+        done
+        [ ${#targets[@]} -eq 0 ] && { echo "Brak targetow"; exit 1; }
+        for t in "${targets[@]}"; do
+          bash "$SCRIPTS/promote-to-prod.sh" "$t" $tag
+        done
+        ;;
       *) echo "Nieznany level: $level (oczekiwane: dev|prod)"; exit 1 ;;
     esac
     ;;
@@ -76,7 +98,27 @@ case "$cmd" in
     case "$sub" in
       init)     exec bash "$SCRIPTS/bq-pack-init.sh"     "$@" ;;
       validate) exec bash "$SCRIPTS/bq-pack-validate.sh" "$@" ;;
-      publish)  exec bash "$SCRIPTS/bq-pack-publish.sh"  "$@" ;;
+      publish)
+        # Wiele paczek z jednym tagiem/message: oz pack publish v0.1.0 --message "..." pack-A pack-B
+        tag=""
+        message=""
+        names=()
+        while [ $# -gt 0 ]; do
+          case "$1" in
+            v[0-9]*) tag="$1"; shift ;;
+            --message) message="$2"; shift 2 ;;
+            *) names+=("$1"); shift ;;
+          esac
+        done
+        [ ${#names[@]} -eq 0 ] && { echo "Uzycie: oz pack publish [vX.Y.Z] [--message \"...\"] <name>..."; exit 1; }
+        for n in "${names[@]}"; do
+          if [ -n "$message" ]; then
+            bash "$SCRIPTS/bq-pack-publish.sh" "$n" $tag --message "$message"
+          else
+            bash "$SCRIPTS/bq-pack-publish.sh" "$n" $tag
+          fi
+        done
+        ;;
       list)
         echo "=== Lokalne paczki (bq-content/) ==="
         if [ -d /home/dadmor/code/obirg-zero/bq-content ]; then
