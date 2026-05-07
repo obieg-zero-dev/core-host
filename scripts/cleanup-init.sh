@@ -5,8 +5,16 @@
 # 3) Default branch -> main (przez gh repo edit)
 # 4) Odtworzenie branch dev jako kopia main
 # 5) Push lokalnych commitów CORE-HOST + packages
+#
+# DESTRUKCYJNE — force-push do 9 plugin repo. Tylko jednorazowo.
 
 set -euo pipefail
+
+[ "${CONFIRM_DESTRUCTIVE_CLEANUP:-}" = "yes-i-really-want-this" ] || {
+  echo "BLAD: destrukcyjny one-shot. Force-push do 9 plugin repo + push CORE-HOST/packages."
+  echo "Aby uruchomic: CONFIRM_DESTRUCTIVE_CLEANUP=yes-i-really-want-this bash $0"
+  exit 1
+}
 
 PLUGINS=(plugin-brain-quest plugin-brain-quest-arena plugin-brain-quest-reader plugin-cosmos-bq plugin-darkmode plugin-data plugin-manager plugin-wibor-calc plugin-workflow-crm)
 PLUGINS_DIR="/home/dadmor/code/obirg-zero/plugins"

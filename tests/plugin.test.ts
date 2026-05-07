@@ -1,8 +1,8 @@
 import 'fake-indexeddb/auto'
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import {
   useHostStore, log, clearLog, getAllPlugins, registerView, registerParser, registerAction,
-  getViews, getParsers, getActions, unregisterPlugin, _resetRegistries, loadOne,
+  getViews, getParsers, getActions, unregisterPlugin, _resetRegistries, checkIntegrity,
 } from '../../packages/runtime/src/plugin'
 import { createStore, _resetForTests } from '../../packages/runtime/src/store'
 import type { Store } from '../../packages/runtime/src/store'
@@ -106,95 +106,38 @@ describe('unregisterPlugin', () => {
 
 // ── TOFU integrity ──────────────────────────────────────────────────
 
-describe('TOFU integrity', () => {
+describe('checkIntegrity (TOFU)', () => {
   let store: Store
-  const pluginFactory = () => ({ id: 'test', label: 'Test' })
+  beforeEach(async () => { _resetForTests(); store = await createStore() })
 
-  const makeDeps = (s: Store) => ({
-    React: { createElement: () => null } as any,
-    ui: {},
-    icons: {},
-    store: s,
-    sdk: {
-      log: vi.fn(),
-      create: vi.fn(),
-      registerView: vi.fn(),
-      registerParser: vi.fn(),
-      registerAction: vi.fn(),
-      getParsers: vi.fn(() => []),
-      getActions: vi.fn(() => []),
-      openFileDialog: vi.fn(),
-    } as any,
+  it('zapisuje hash przy pierwszym pobraniu wersjonowanego pluginu', () => {
+    checkIntegrity('org/p@v1.0.0', 'h1', store)
+    expect(store.get('integrity:org/p@v1.0.0')?.data.hash).toBe('h1')
   })
 
-  beforeEach(async () => {
-    _resetForTests()
-    store = await createStore()
+  it('blokuje gdy hash sie zmienil', () => {
+    checkIntegrity('org/p@v1.0.0', 'h1', store)
+    expect(() => checkIntegrity('org/p@v1.0.0', 'h2', store)).toThrow(/zostal zmodyfikowany|został zmodyfikowany/)
   })
 
-  it('zapisuje hash przy pierwszym pobraniu pluginu', async () => {
-    const mod = { default: pluginFactory }
-    vi.doMock('../src/plugin', async (importOriginal) => {
-      const orig = await importOriginal<typeof import('./plugin')>()
-      return orig
-    })
-
-    // Simulate: manually test the TOFU logic
-    const spec = 'org/test-plugin@main'
-    const hash = 'abc123'
-    const key = `integrity:${spec}`
-
-    // First use — no known hash, should store it
-    const known1 = store.get(key)
-    expect(known1).toBeUndefined()
-
-    store.add('_integrity', { hash, spec }, { id: key })
-    const known2 = store.get(key)
-    expect(known2).toBeDefined()
-    expect(known2!.data.hash).toBe('abc123')
+  it('przepuszcza gdy hash ten sam', () => {
+    checkIntegrity('org/p@v1.0.0', 'h1', store)
+    expect(() => checkIntegrity('org/p@v1.0.0', 'h1', store)).not.toThrow()
   })
 
-  it('BLOKUJE ładowanie gdy hash się zmienił (TOFU)', async () => {
-    const spec = 'org/test-plugin@main'
-    const key = `integrity:${spec}`
-
-    // Simulate first-use hash stored
-    store.add('_integrity', { hash: 'original-hash', spec }, { id: key })
-
-    // Verify the stored hash
-    const known = store.get(key)
-    expect(known).toBeDefined()
-    expect(known!.data.hash).toBe('original-hash')
-
-    // TOFU check: different hash MUST throw
-    const newHash = 'tampered-hash'
-    expect(known!.data.hash && known!.data.hash !== newHash).toBe(true)
+  it('pomija lokalne pluginy (./)', () => {
+    checkIntegrity('./local', 'h1', store)
+    expect(store.get('integrity:./local')).toBeUndefined()
   })
 
-  it('NIE blokuje lokalnych pluginów (./)', async () => {
-    const spec = './local-plugin'
-    // Local plugins skip TOFU — known is always undefined
-    const known = spec.startsWith('./') ? undefined : store.get(`integrity:${spec}`)
-    expect(known).toBeUndefined()
+  it('pomija nie-wersjonowane @main', () => {
+    checkIntegrity('org/p@main', 'h1', store)
+    expect(store.get('integrity:org/p@main')).toBeUndefined()
   })
 
-  it('przepuszcza gdy hash się nie zmienił', async () => {
-    const spec = 'org/test-plugin@main'
-    const key = `integrity:${spec}`
-    const hash = 'same-hash'
-
-    store.add('_integrity', { hash, spec }, { id: key })
-
-    const known = store.get(key)
-    // Same hash — condition is false, no throw
-    expect(known!.data.hash && known!.data.hash !== hash).toBe(false)
-  })
-
-  it('TOFU throw zawiera czytelny komunikat po polsku', () => {
-    const spec = 'org/plugin@main'
-    const msg = `Plugin "${spec}" został zmodyfikowany — kod pluginu zmienił się od ostatniego użycia. Wyczyść dane przeglądarki aby zaakceptować nową wersję.`
-    expect(msg).toContain('został zmodyfikowany')
-    expect(msg).toContain(spec)
+  it('chroni store:// specs', () => {
+    checkIntegrity('store://abc', 'h1', store)
+    expect(() => checkIntegrity('store://abc', 'h2', store)).toThrow()
   })
 })
 
