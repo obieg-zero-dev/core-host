@@ -115,10 +115,9 @@ if os.path.isdir("lexicon"):
         try:
             for x in json.load(open(f)): _ingest_lex(x)
         except: pass
-if os.path.exists("terms.json"):
-    try:
-        for x in json.load(open("terms.json")): _ingest_lex(x)
-    except: pass
+# UWAGA: terms.json to LEGACY format ze starego BRAIN-QUEST, plugin-bq-loader go NIE
+# czyta przy load. Liczenie termow z tego pliku falszowalo statystyki manifest
+# (np. baza pokazywala 99 terminow zamiast 40 ladowanych do store).
 
 # Mentions: {{...}} w content/*.json (text + answer + question)
 mention_re = re.compile(r"\{\{([^}]+)\}\}")
