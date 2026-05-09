@@ -29,9 +29,29 @@ cd "$dir"
 author_name=$(git config user.name 2>/dev/null || git config --global user.name 2>/dev/null || echo "")
 author_email=$(git config user.email 2>/dev/null || git config --global user.email 2>/dev/null || echo "")
 
-# Wersja z najnowszego semver tag (vX.Y.Z), fallback "0.0.0"
-version=$(git tag --list 'v*' --sort=-v:refname 2>/dev/null | head -1 | sed 's/^v//' || true)
-[ -z "$version" ] && version="0.0.0"
+# Wersja:
+#   - $OZ_PACK_VERSION (env override) — uzywane przez 'oz pack publish --bump' przed utworzeniem taga
+#   - inaczej: ostatni semver tag + sufiks gdy HEAD po tagu (semver pre-release).
+#     git describe --long zwraca v0.4.0-3-ga1b2c3d  ↔ v0.4.0-0-g... (HEAD == tag).
+#     Gdy commits_since > 0: "0.4.0-dev.3+a1b2c3d" — jasny sygnal "po tagu".
+#   - brak tagow: "0.0.0"
+if [ -n "${OZ_PACK_VERSION:-}" ]; then
+  version="$OZ_PACK_VERSION"
+else
+  desc=$(git describe --tags --long --match 'v*' 2>/dev/null || true)
+  if [ -n "$desc" ]; then
+    base=$(echo "$desc" | sed -E 's/^v//; s/-[0-9]+-g[0-9a-f]+$//')
+    commits_since=$(echo "$desc" | sed -E 's/^.*-([0-9]+)-g[0-9a-f]+$/\1/')
+    sha=$(echo "$desc" | sed -E 's/^.*-g([0-9a-f]+)$/\1/')
+    if [ "$commits_since" = "0" ]; then
+      version="$base"
+    else
+      version="${base}-dev.${commits_since}+${sha}"
+    fi
+  else
+    version="0.0.0"
+  fi
+fi
 
 NAME="$name" AUTHOR_NAME="$author_name" AUTHOR_EMAIL="$author_email" VERSION="$version" \
 python3 <<'PY'

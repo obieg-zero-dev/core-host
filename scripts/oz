@@ -24,7 +24,7 @@ PACZKI KONTENTOWE BQ (BQ-content org na GitHub)
   oz pack init     <name> [opts]                 Szkielet nowej paczki + git init + gh repo create
                                                  opts: --extends "<tytul-bazy>" --description "..."
   oz pack validate <name>                        Walidacja tree.json
-  oz pack publish  [vX.Y.Z] [--message "..."] <name>...   Validate → commit → push (jedna lub wiele paczek)
+  oz pack publish  [vX.Y.Z | --bump patch|minor|major] [--message "..."] <name>...   Validate → commit → push (jedna lub wiele paczek)
   oz pack list                                   Lista paczek (lokalnie + remote BQ-content)
 
 BUILD I SETUP
@@ -100,23 +100,28 @@ case "$cmd" in
       init)     exec bash "$SCRIPTS/bq-pack-init.sh"     "$@" ;;
       validate) exec bash "$SCRIPTS/bq-pack-validate.sh" "$@" ;;
       publish)
-        # Wiele paczek z jednym tagiem/message: oz pack publish v0.1.0 --message "..." pack-A pack-B
+        # Wiele paczek z jednym tagiem/bumpem/message: oz pack publish [vX.Y.Z|--bump patch|minor|major] [--message "..."] pack-A pack-B
         tag=""
+        bump=""
         message=""
         names=()
         while [ $# -gt 0 ]; do
           case "$1" in
             v[0-9]*) tag="$1"; shift ;;
+            --bump) bump="$2"; shift 2 ;;
             --message) message="$2"; shift 2 ;;
             *) names+=("$1"); shift ;;
           esac
         done
-        [ ${#names[@]} -eq 0 ] && { echo "Uzycie: oz pack publish [vX.Y.Z] [--message \"...\"] <name>..."; exit 1; }
+        [ ${#names[@]} -eq 0 ] && { echo "Uzycie: oz pack publish [vX.Y.Z | --bump patch|minor|major] [--message \"...\"] <name>..."; exit 1; }
+        ver_args=()
+        [ -n "$tag" ] && ver_args+=("$tag")
+        [ -n "$bump" ] && ver_args+=("--bump" "$bump")
         for n in "${names[@]}"; do
           if [ -n "$message" ]; then
-            bash "$SCRIPTS/bq-pack-publish.sh" "$n" $tag --message "$message"
+            bash "$SCRIPTS/bq-pack-publish.sh" "$n" "${ver_args[@]}" --message "$message"
           else
-            bash "$SCRIPTS/bq-pack-publish.sh" "$n" $tag
+            bash "$SCRIPTS/bq-pack-publish.sh" "$n" "${ver_args[@]}"
           fi
         done
         ;;
