@@ -37,6 +37,9 @@ HOOK_SRC="$(dirname "$(realpath "$0")")/git-hooks/pre-push"
 dir="$ROOT/$name"
 [ -d "$dir" ] || { echo "BLAD: brak katalogu $dir"; exit 1; }
 
+# Auto-gen pack.json (manifest paczki) PRZED walidacja
+bash "$(dirname "$(realpath "$0")")/bq-pack-manifest.sh" "$name"
+
 # Walidacja struktury (deleguj do bq-pack-validate.sh — exit 1 jesli bledy)
 bash "$(dirname "$(realpath "$0")")/bq-pack-validate.sh" "$name"
 

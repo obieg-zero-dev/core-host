@@ -151,6 +151,26 @@ bq-content/<name>/
 
 Workflow: `oz pack init/validate/publish/list`. LLM edytuje pliki, user pcha. Pełny opis: `bq-content/README.md`.
 
+### Nazewnictwo BQ — zanim zaczniesz edytować, sprawdź dwa razy
+
+Schemat ma kilka **bardzo podobnych** nazw o **różnym znaczeniu**. Pomyłka = oznaczenie live kodu jako martwego (lub odwrotnie).
+
+| Nazwa | Gdzie | Co znaczy |
+|---|---|---|
+| `tree.data.relations` (plural, JSON-string) | seed format | definicje relTypes (`progression`, `branch`, `kontekst`, `postac`, `wydarzenie`) → tworzą rekordy `relType` w store. **LIVE.** |
+| `tree.data.edges` (JSON-string) | seed format | realne krawędzie (`from`, `to`, `type`) między nodami |
+| `lex.data.nodes` (plural, JSON-string) | seed format | tablica **stringów nodeId** (nie obiektów). Każdy element → jeden `lexNode` z `nid: <string>` |
+| `node.data.nodeId` (string PL np. `'antygona'`) | runtime | content key — używany w `edge.fromNid`/`toNid`, `lexNode.nid` |
+| `post.id` (UUID) | runtime | store-generated, używany jako `parentId` w hierarchii |
+
+Słowo „**kontekst**" występuje w **2 znaczeniach** (po wycięciu fantomowych contextEdges):
+1. **`branch=konteksty`** — kategoria nodu (np. node Vanitas, Prometeusz, Hiob)
+2. **`relType=kontekst`** — typ realnej krawędzi (lektura → kontekst-node)
+
+Analogicznie pary `postacie/postac`, `wydarzenia/wydarzenie` (branch plural / relType singular).
+
+**Zasada**: każda krawędź / podświetlenie / sygnał na grafie BQ musi mieć źródło w `node`/`edge`/`branch`/`relType` recordzie. Heurystyki / wyliczenia („te dwie lektury mają wspólny termin → narysuj krawędź") = dług, nawet jeśli ładnie wygląda. System edukacyjny dyskwalifikuje się na fałszywych sygnałach.
+
 ## Kod
 
 CORE-HOST jest cienki — tylko `src/main.tsx` (5 LOC, woła `bootRuntime`) + `index.css`. Cała logika żyje w **`packages/runtime/`**:

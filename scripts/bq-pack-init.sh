@@ -100,6 +100,9 @@ cd "$dir"
 git init -q -b main
 [ -f "$HOOK_SRC" ] && install -m 0755 "$HOOK_SRC" .git/hooks/pre-push
 
+# Auto-gen pack.json (manifest) — w pierwszym commicie
+bash "$(dirname "$(realpath "$0")")/bq-pack-manifest.sh" "$name"
+
 git add -A
 git commit -q -m "Init: $description"
 

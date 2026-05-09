@@ -95,6 +95,30 @@ else:
             except Exception as e:
                 errors.append(f"{sub}/{fn}: invalid JSON ({e})")
 
+# pack.json (manifest) — wymagany przed publikacja
+pack_path = f"{dir}/pack.json"
+if not os.path.exists(pack_path):
+    warns.append("Brak pack.json — wygeneruj 'bash bq-pack-manifest.sh <name>' (oz pack publish robi to automatycznie)")
+else:
+    try:
+        m = json.load(open(pack_path))
+    except Exception as e:
+        errors.append(f"pack.json: invalid JSON ({e})")
+        m = None
+    if m is not None:
+        for req in ("schemaVersion", "id", "title", "version", "provides", "stats"):
+            if req not in m:
+                errors.append(f"pack.json: brak wymaganego pola '{req}'")
+        if m.get("id") and m["id"] != "$name":
+            warns.append(f"pack.json.id='{m['id']}' rozni sie od nazwy katalogu '$name'")
+        if not (m.get("author") or {}).get("name"):
+            warns.append("pack.json.author.name pusty (skonfiguruj git config user.name)")
+        if not m.get("license"):
+            warns.append("pack.json.license pusty (rekomendowane: CC-BY-SA-4.0)")
+        unmet = m.get("mentions") or []
+        if unmet:
+            warns.append(f"pack.json: {len(unmet)} mentions_unmet (terminy uzywane w content ale niezdefiniowane w paczce): {unmet[:5]}{'...' if len(unmet)>5 else ''}")
+
 print(f"[$name] tree.json: tytul='{title}'", end="")
 if extends_id: print(f" extends='{extends_id}'", end="")
 elif own_id: print(f" id='{own_id}'", end="")
